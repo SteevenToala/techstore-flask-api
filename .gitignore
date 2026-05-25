@@ -1,0 +1,22 @@
+# Entornos virtuales
+venv/
+env/
+.venv/
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Credenciales y archivos sensibles
+firebase-key.json
+*.pem
+
+# Configuraciones de IDEs y sistemas operativos
+.vscode/
+.idea/
+.DS_Store
+
+# Archivos de log
+*.log
