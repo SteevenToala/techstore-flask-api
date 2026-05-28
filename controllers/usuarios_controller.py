@@ -50,3 +50,13 @@ def eliminar_usuario(id):
         return jsonify({"success": False, "message": "Usuario no encontrado"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": "Error al eliminar usuario", "error": str(e)}), 500
+
+def obtener_mi_perfil():
+    firebase_uid = request.user.get('uid')
+    try:
+        usuario = UsuarioModel.obtener_por_firebase_uid(firebase_uid)
+        if not usuario:
+            return jsonify({"success": False, "message": "Usuario no registrado en la BD local"}), 404
+        return jsonify({"success": True, "data": usuario}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error al obtener perfil", "error": str(e)}), 500
