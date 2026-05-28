@@ -13,6 +13,12 @@ def get_usuarios():
 def post_usuario():
     return crear_usuario()
 
+@usuarios_bp.route('/me', methods=['GET'])
+@require_auth
+def get_mi_perfil():
+    from controllers.usuarios_controller import obtener_mi_perfil
+    return obtener_mi_perfil()
+
 @usuarios_bp.route('/<string:id>', methods=['PUT'])
 @require_auth
 def put_usuario(id):
@@ -22,3 +28,4 @@ def put_usuario(id):
 @require_auth
 def delete_usuario(id):
     return eliminar_usuario(id)
+
