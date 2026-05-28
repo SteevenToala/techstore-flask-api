@@ -11,6 +11,7 @@ from routes.compras_routes import compras_bp
 load_dotenv()
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 CORS(app)
 
 # =========================

@@ -13,6 +13,3 @@ class Config:
 
     # Firebase
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "firebase-key.json")
-
-    # SOAP Service URL
-    SOAP_SERVICE_URL = os.getenv("SOAP_SERVICE_URL", "http://localhost:8000/soap")
