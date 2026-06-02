@@ -16,12 +16,15 @@ def crear_usuario():
     email = data.get('email')
     rol = data.get('rol', 'CLIENTE')
     telefono = data.get('telefono', '')
+    cedula = data.get('cedula')
+    if not cedula:
+        cedula = None
 
     if not all([firebase_uid, nombres, apellidos, email]):
         return jsonify({"success": False, "message": "Faltan datos obligatorios"}), 400
 
     try:
-        nuevo_usuario = UsuarioModel.crear(firebase_uid, nombres, apellidos, email, rol, telefono)
+        nuevo_usuario = UsuarioModel.crear(firebase_uid, nombres, apellidos, email, rol, telefono, cedula)
         return jsonify({"success": True, "message": "Usuario creado", "data": nuevo_usuario}), 201
     except Exception as e:
         return jsonify({"success": False, "message": "Error al crear usuario", "error": str(e)}), 500
@@ -32,10 +35,13 @@ def actualizar_usuario(id):
     apellidos = data.get('apellidos')
     rol = data.get('rol')
     telefono = data.get('telefono')
+    cedula = data.get('cedula')
+    if not cedula:
+        cedula = None
     estado = data.get('estado')
 
     try:
-        actualizado = UsuarioModel.actualizar(id, nombres, apellidos, rol, telefono, estado)
+        actualizado = UsuarioModel.actualizar(id, nombres, apellidos, rol, telefono, cedula, estado)
         if actualizado:
             return jsonify({"success": True, "message": "Usuario actualizado exitosamente"}), 200
         return jsonify({"success": False, "message": "Usuario no encontrado"}), 404
@@ -57,6 +63,10 @@ def obtener_mi_perfil():
         usuario = UsuarioModel.obtener_por_firebase_uid(firebase_uid)
         if not usuario:
             return jsonify({"success": False, "message": "Usuario no registrado en la BD local"}), 404
+        if usuario.get('eliminado', False):
+            return jsonify({"success": False, "message": "Esta cuenta ha sido eliminada"}), 403
+        if not usuario.get('estado', True):
+            return jsonify({"success": False, "message": "Usuario inactivo o suspendido"}), 403
         return jsonify({"success": True, "data": usuario}), 200
     except Exception as e:
         return jsonify({"success": False, "message": "Error al obtener perfil", "error": str(e)}), 500

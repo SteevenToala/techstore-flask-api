@@ -48,3 +48,12 @@ def crear_compra():
             
     except Exception as e:
         return jsonify({"success": False, "message": "Error al registrar compra", "error": str(e)}), 500
+
+def eliminar_compra(id):
+    try:
+        eliminado = CompraModel.eliminar(id)
+        if eliminado:
+            return jsonify({"success": True, "message": "Compra eliminada exitosamente"}), 200
+        return jsonify({"success": False, "message": "Compra no encontrada"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error al eliminar compra", "error": str(e)}), 500

@@ -9,7 +9,7 @@ class ProductoModel:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, descripcion, precio, stock, imagen_url, activo, created_at FROM productos ORDER BY created_at DESC")
+                cursor.execute("SELECT id, nombre, descripcion, precio, stock, imagen_url, activo, created_at FROM productos WHERE eliminado = FALSE ORDER BY created_at DESC")
                 return cursor.fetchall()
         finally:
             conn.close()
@@ -22,7 +22,7 @@ class ProductoModel:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, descripcion, precio, stock, imagen_url, activo, created_at FROM productos WHERE activo = TRUE")
+                cursor.execute("SELECT id, nombre, descripcion, precio, stock, imagen_url, activo, created_at FROM productos WHERE activo = TRUE AND eliminado = FALSE")
                 return cursor.fetchall()
         finally:
             conn.close()
@@ -35,8 +35,8 @@ class ProductoModel:
         try:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO productos (nombre, descripcion, precio, stock, imagen_url)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO productos (nombre, descripcion, precio, stock, imagen_url, eliminado)
+                    VALUES (%s, %s, %s, %s, %s, FALSE)
                     RETURNING id, nombre;
                 """, (nombre, descripcion, precio, stock, imagen_url))
                 nuevo_producto = cursor.fetchone()
@@ -71,8 +71,7 @@ class ProductoModel:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                # Borrado físico, aunque en e-commerce es mejor actualizar el campo 'activo' a false
-                cursor.execute("DELETE FROM productos WHERE id = %s RETURNING id;", (id,))
+                cursor.execute("UPDATE productos SET eliminado = TRUE, updated_at = NOW() WHERE id = %s RETURNING id;", (id,))
                 eliminado = cursor.fetchone()
                 conn.commit()
                 return eliminado
