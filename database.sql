@@ -87,3 +87,12 @@ VALUES
 ('Laptop Lenovo', 'Laptop Ryzen 7', 850.00, 20),
 ('Mouse Logitech', 'Mouse inalámbrico', 25.50, 100),
 ('Teclado Mecánico', 'RGB Switch Blue', 65.00, 50);
+
+-- ==========================================================
+-- ACTUALIZACIONES / MIGRACIONES
+-- ==========================================================
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cedula VARCHAR(20) UNIQUE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS eliminado BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS eliminado BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS eliminado BOOLEAN NOT NULL DEFAULT FALSE;
