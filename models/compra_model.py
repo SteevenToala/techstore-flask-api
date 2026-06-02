@@ -10,7 +10,7 @@ class CompraModel:
         try:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT c.id, c.fecha_compra, c.subtotal, c.iva, c.total, c.estado, c.clave_acceso, 
+                    SELECT c.id, c.usuario_id, to_char(c.fecha_compra, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as fecha_compra, c.subtotal, c.iva, c.total, c.estado, c.clave_acceso, 
                            u.email as usuario_email, u.nombres as usuario_nombres
                     FROM compras c
                     JOIN usuarios u ON c.usuario_id = u.id
@@ -28,7 +28,7 @@ class CompraModel:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, fecha_compra, subtotal, iva, total, estado, clave_acceso FROM compras WHERE usuario_id = %s ORDER BY fecha_compra DESC", (usuario_id,))
+                cursor.execute("SELECT id, to_char(fecha_compra, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as fecha_compra, subtotal, iva, total, estado, clave_acceso FROM compras WHERE usuario_id = %s ORDER BY fecha_compra DESC", (usuario_id,))
                 return cursor.fetchall()
         finally:
             conn.close()

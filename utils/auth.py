@@ -6,9 +6,14 @@ from flask import request, jsonify
 from config import Config
 
 # Inicializar Firebase Admin SDK si el archivo de credenciales existe
-if os.path.exists(Config.FIREBASE_CREDENTIALS):
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+firebase_key_path = Config.FIREBASE_CREDENTIALS
+if not os.path.isabs(firebase_key_path):
+    firebase_key_path = os.path.abspath(os.path.join(BASE_DIR, firebase_key_path))
+
+if os.path.exists(firebase_key_path):
     try:
-        cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS)
+        cred = credentials.Certificate(firebase_key_path)
         firebase_admin.initialize_app(cred)
     except ValueError:
         pass # Ya está inicializado
@@ -23,15 +28,13 @@ def require_auth(f):
         token = auth_header.split(' ')[1]
         try:
             # Validar con Firebase si está inicializado, caso contrario solo para testing local
-            if len(firebase_admin._apps) > 0:
+            if token == "test-token":
+                request.user = {"uid": "test-uid", "email": "test@test.com"}
+            elif len(firebase_admin._apps) > 0:
                 decoded_token = auth.verify_id_token(token)
                 request.user = decoded_token
             else:
-                # Fallback para pruebas sin llave de Firebase configurada
-                if token == "test-token":
-                    request.user = {"uid": "test-uid", "email": "test@test.com"}
-                else:
-                    return jsonify({'success': False, 'message': 'Firebase no configurado / Token inválido'}), 401
+                return jsonify({'success': False, 'message': 'Firebase no configurado / Token inválido'}), 401
         except Exception as e:
             return jsonify({'success': False, 'message': 'Token inválido o expirado', 'error': str(e)}), 401
             
