@@ -49,8 +49,29 @@ class CompraModel:
                 """, (usuario_id, subtotal, iva, total))
                 compra_id = cursor.fetchone()['id']
 
-                # Insertar detalles
+
                 for d in detalles:
+                    cursor.execute("""
+                        SELECT stock, nombre, activo, eliminado 
+                        FROM productos 
+                        WHERE id = %s 
+                        FOR UPDATE;
+                    """, (d['producto_id'],))
+                    producto = cursor.fetchone()
+                    
+                    if not producto:
+                        raise Exception("Producto no encontrado o no existe")
+                    if producto['eliminado'] or not producto['activo']:
+                        raise Exception(f"El producto '{producto['nombre']}' ya no está disponible")
+                    if producto['stock'] < d['cantidad']:
+                        raise Exception(f"Stock insuficiente para '{producto['nombre']}'. Disponible: {producto['stock']}, Solicitado: {d['cantidad']}")
+
+                    cursor.execute("""
+                        UPDATE productos 
+                        SET stock = stock - %s, updated_at = NOW() 
+                        WHERE id = %s;
+                    """, (d['cantidad'], d['producto_id']))
+
                     subtotal_detalle = d['cantidad'] * d['precio_unitario']
                     cursor.execute("""
                         INSERT INTO detalle_compra (compra_id, producto_id, cantidad, precio_unitario, subtotal)
