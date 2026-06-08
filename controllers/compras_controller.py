@@ -76,6 +76,10 @@ def crear_compra():
     paypal_order_id = data.get('paypal_order_id') # Obtenemos el ID de PayPal desde el frontend
     direccion_origen = data.get('direccion_origen')
     direccion_destino = data.get('direccion_destino')
+    latitud_origen = data.get('latitud_origen')
+    longitud_origen = data.get('longitud_origen')
+    latitud_destino = data.get('latitud_destino')
+    longitud_destino = data.get('longitud_destino')
 
     if not detalles:
         return jsonify({"success": False, "message": "La compra debe tener detalles"}), 400
@@ -99,7 +103,9 @@ def crear_compra():
         # Crear compra y detalles localmente en la base de datos
         compra_id = CompraModel.crear_compra_y_detalles(
             usuario_id, subtotal, iva, total, detalles, 
-            direccion_origen, direccion_destino
+            direccion_origen, direccion_destino,
+            latitud_origen, longitud_origen,
+            latitud_destino, longitud_destino
         )
 
         return jsonify({
