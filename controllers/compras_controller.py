@@ -80,6 +80,7 @@ def crear_compra():
     longitud_origen = data.get('longitud_origen')
     latitud_destino = data.get('latitud_destino')
     longitud_destino = data.get('longitud_destino')
+    metodo_entrega = data.get('metodo_entrega', 'ENTREGA') # Por defecto es entrega a domicilio
 
     if not detalles:
         return jsonify({"success": False, "message": "La compra debe tener detalles"}), 400
@@ -105,7 +106,8 @@ def crear_compra():
             usuario_id, subtotal, iva, total, detalles, 
             direccion_origen, direccion_destino,
             latitud_origen, longitud_origen,
-            latitud_destino, longitud_destino
+            latitud_destino, longitud_destino,
+            metodo_entrega
         )
 
         return jsonify({
