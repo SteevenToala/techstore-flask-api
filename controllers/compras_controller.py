@@ -1,6 +1,56 @@
 from flask import jsonify, request
 from models.compra_model import CompraModel
 from models.usuario_model import UsuarioModel
+import os
+import requests
+from requests.auth import HTTPBasicAuth
+
+def verificar_pago_paypal(order_id):
+    """
+    Se conecta a la API de PayPal para verificar que la orden especificada
+    haya sido pagada y completada correctamente.
+    """
+    client_id = os.environ.get('PAYPAL_CLIENT_ID')
+    secret = os.environ.get('PAYPAL_SECRET')
+    environment = os.environ.get('PAYPAL_ENV', 'sandbox')
+    
+    # URL dependiendo si estamos en desarrollo (sandbox) o producción
+    base_url = "https://api-m.sandbox.paypal.com" if environment == 'sandbox' else "https://api-m.paypal.com"
+    
+    try:
+        # 1. Obtener token de acceso de PayPal
+        token_url = f"{base_url}/v1/oauth2/token"
+        token_response = requests.post(
+            token_url,
+            auth=HTTPBasicAuth(client_id, secret),
+            data={"grant_type": "client_credentials"},
+            headers={"Accept": "application/json", "Accept-Language": "en_US"}
+        )
+        
+        if token_response.status_code != 200:
+            return False, "Error de autenticación con PayPal (Verifica tus credenciales en el .env)"
+            
+        access_token = token_response.json()['access_token']
+        
+        # 2. Capturar el pago (verificar que el usuario pagó)
+        capture_url = f"{base_url}/v2/checkout/orders/{order_id}/capture"
+        capture_response = requests.post(
+            capture_url,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}"
+            }
+        )
+        
+        # 201 significa que fue capturada exitosamente, 200 si ya había sido capturada o info de orden.
+        if capture_response.status_code in (200, 201):
+            data = capture_response.json()
+            if data.get('status') == 'COMPLETED':
+                return True, "Pago completado"
+                
+        return False, "El pago no pudo ser procesado o no fue completado en PayPal."
+    except Exception as e:
+        return False, f"Error al conectar con PayPal: {str(e)}"
 
 def obtener_compras(admin=False):
     usuario_uid = request.user.get('uid')
@@ -23,9 +73,16 @@ def crear_compra():
     usuario_uid = request.user.get('uid')
     data = request.get_json()
     detalles = data.get('detalles', [])
+    paypal_order_id = data.get('paypal_order_id') # Obtenemos el ID de PayPal desde el frontend
 
     if not detalles:
         return jsonify({"success": False, "message": "La compra debe tener detalles"}), 400
+
+    # Si se envía un ID de PayPal, verificamos el pago antes de registrar la compra
+    if paypal_order_id:
+        pago_exitoso, mensaje_paypal = verificar_pago_paypal(paypal_order_id)
+        if not pago_exitoso:
+            return jsonify({"success": False, "message": mensaje_paypal}), 400
 
     try:
         usuario = UsuarioModel.obtener_por_firebase_uid(usuario_uid)
