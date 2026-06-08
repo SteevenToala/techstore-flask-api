@@ -11,6 +11,7 @@ class CompraModel:
             with conn.cursor() as cursor:
                 cursor.execute("""
                     SELECT c.id, c.usuario_id, to_char(c.fecha_compra, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as fecha_compra, c.subtotal, c.iva, c.total, c.estado, c.clave_acceso, 
+                           c.direccion_origen, c.direccion_destino,
                            u.email as usuario_email, u.nombres as usuario_nombres
                     FROM compras c
                     JOIN usuarios u ON c.usuario_id = u.id
@@ -29,13 +30,13 @@ class CompraModel:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, to_char(fecha_compra, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as fecha_compra, subtotal, iva, total, estado, clave_acceso FROM compras WHERE usuario_id = %s AND eliminado = FALSE ORDER BY fecha_compra DESC", (usuario_id,))
+                cursor.execute("SELECT id, to_char(fecha_compra, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as fecha_compra, subtotal, iva, total, estado, clave_acceso, direccion_origen, direccion_destino FROM compras WHERE usuario_id = %s AND eliminado = FALSE ORDER BY fecha_compra DESC", (usuario_id,))
                 return cursor.fetchall()
         finally:
             conn.close()
 
     @staticmethod
-    def crear_compra_y_detalles(usuario_id, subtotal, iva, total, detalles):
+    def crear_compra_y_detalles(usuario_id, subtotal, iva, total, detalles, direccion_origen=None, direccion_destino=None):
         conn = get_db_connection()
         if not conn:
             raise Exception("Error de conexión a la BD")
@@ -43,10 +44,10 @@ class CompraModel:
             with conn.cursor() as cursor:
                 # Insertar compra principal
                 cursor.execute("""
-                    INSERT INTO compras (usuario_id, subtotal, iva, total, estado, eliminado)
-                    VALUES (%s, %s, %s, %s, 'PENDIENTE', FALSE)
+                    INSERT INTO compras (usuario_id, subtotal, iva, total, estado, eliminado, direccion_origen, direccion_destino)
+                    VALUES (%s, %s, %s, %s, 'PENDIENTE', FALSE, %s, %s)
                     RETURNING id;
-                """, (usuario_id, subtotal, iva, total))
+                """, (usuario_id, subtotal, iva, total, direccion_origen, direccion_destino))
                 compra_id = cursor.fetchone()['id']
 
 
