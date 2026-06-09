@@ -40,7 +40,7 @@ class CompraModel:
                                 direccion_origen=None, direccion_destino=None,
                                 latitud_origen=None, longitud_origen=None,
                                 latitud_destino=None, longitud_destino=None,
-                                metodo_entrega='ENTREGA'):
+                                metodo_entrega='ENTREGA', estado='PENDIENTE'):
         conn = get_db_connection()
         if not conn:
             raise Exception("Error de conexión a la BD")
@@ -52,9 +52,9 @@ class CompraModel:
                                          direccion_origen, direccion_destino, 
                                          latitud_origen, longitud_origen, 
                                          latitud_destino, longitud_destino, metodo_entrega)
-                    VALUES (%s, %s, %s, %s, 'PENDIENTE', FALSE, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
-                """, (usuario_id, subtotal, iva, total, 
+                """, (usuario_id, subtotal, iva, total, estado,
                       direccion_origen, direccion_destino, 
                       latitud_origen, longitud_origen, 
                       latitud_destino, longitud_destino, metodo_entrega))

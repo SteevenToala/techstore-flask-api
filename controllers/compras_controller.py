@@ -85,11 +85,13 @@ def crear_compra():
     if not detalles:
         return jsonify({"success": False, "message": "La compra debe tener detalles"}), 400
 
+    estado_compra = 'PENDIENTE'
     # Si se envía un ID de PayPal, verificamos el pago antes de registrar la compra
     if paypal_order_id:
         pago_exitoso, mensaje_paypal = verificar_pago_paypal(paypal_order_id)
         if not pago_exitoso:
             return jsonify({"success": False, "message": mensaje_paypal}), 400
+        estado_compra = 'PAGADA'
 
     try:
         usuario = UsuarioModel.obtener_por_firebase_uid(usuario_uid)
@@ -107,7 +109,7 @@ def crear_compra():
             direccion_origen, direccion_destino,
             latitud_origen, longitud_origen,
             latitud_destino, longitud_destino,
-            metodo_entrega
+            metodo_entrega, estado_compra
         )
 
         return jsonify({
