@@ -85,13 +85,17 @@ def crear_compra():
     if not detalles:
         return jsonify({"success": False, "message": "La compra debe tener detalles"}), 400
 
-    estado_compra = 'PENDIENTE'
+    estado_compra = data.get('estado') or data.get('status') or 'PENDIENTE'
     # Si se envía un ID de PayPal, verificamos el pago antes de registrar la compra
     if paypal_order_id:
         pago_exitoso, mensaje_paypal = verificar_pago_paypal(paypal_order_id)
         if not pago_exitoso:
             return jsonify({"success": False, "message": mensaje_paypal}), 400
         estado_compra = 'PAGADA'
+
+    # Validar que el estado sea uno de los permitidos por la BD
+    if estado_compra not in ('PENDIENTE', 'PAGADA', 'FACTURADA', 'CANCELADA'):
+        estado_compra = 'PENDIENTE'
 
     try:
         usuario = UsuarioModel.obtener_por_firebase_uid(usuario_uid)

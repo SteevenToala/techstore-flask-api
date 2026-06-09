@@ -5,7 +5,7 @@ class CompraModel:
     def obtener_todas():
         # Para el panel administrativo (React)
         try:
-            return execute_pg_query("""
+            compras = execute_pg_query("""
                 SELECT c.id, c.usuario_id, to_char(c.fecha_compra, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as fecha_compra, c.subtotal, c.iva, c.total, c.estado, c.clave_acceso, 
                        c.direccion_origen, c.direccion_destino, c.latitud_origen, c.longitud_origen, c.latitud_destino, c.longitud_destino, c.metodo_entrega,
                        u.email as usuario_email, u.nombres as usuario_nombres
@@ -14,6 +14,31 @@ class CompraModel:
                 WHERE c.eliminado = FALSE
                 ORDER BY c.fecha_compra DESC
             """, fetch_all=True)
+
+            if compras:
+                compra_ids = [c['id'] for c in compras]
+                detalles = execute_pg_query("""
+                    SELECT dc.compra_id, dc.producto_id, dc.cantidad, dc.precio_unitario, dc.subtotal, p.nombre as producto_nombre
+                    FROM detalle_compra dc
+                    JOIN productos p ON dc.producto_id = p.id
+                    WHERE dc.compra_id = ANY(%s)
+                """, (compra_ids,), fetch_all=True)
+
+                from collections import defaultdict
+                detalles_por_compra = defaultdict(list)
+                for d in detalles:
+                    detalles_por_compra[str(d['compra_id'])].append({
+                        "producto_id": str(d['producto_id']),
+                        "producto_nombre": d['producto_nombre'],
+                        "cantidad": d['cantidad'],
+                        "precio_unitario": float(d['precio_unitario']),
+                        "subtotal": float(d['subtotal'])
+                    })
+
+                for c in compras:
+                    c['detalles'] = detalles_por_compra[str(c['id'])]
+
+            return compras
         except Exception as e:
             print(f"Advertencia: Fallaron bases de datos relacionales para obtener_todas de compras ({e}). Intentando fallback en MongoDB...")
             db = get_mongodb_db()
@@ -36,6 +61,18 @@ class CompraModel:
                     lat_d = float(doc.get("latitud_destino")) if doc.get("latitud_destino") is not None else None
                     lon_d = float(doc.get("longitud_destino")) if doc.get("longitud_destino") is not None else None
 
+                    # MongoDB might have details embedded or not, let's load them if present
+                    detalles_raw = doc.get("detalles") or doc.get("details") or []
+                    detalles_list = []
+                    for item in detalles_raw:
+                        detalles_list.append({
+                            "producto_id": str(item.get("producto_id")),
+                            "producto_nombre": item.get("producto_nombre") or item.get("nombre") or "",
+                            "cantidad": item.get("cantidad") or 0,
+                            "precio_unitario": float(item.get("precio_unitario") or 0.0),
+                            "subtotal": float(item.get("subtotal") or 0.0)
+                        })
+
                     result.append({
                         "id": str(doc.get("id")),
                         "usuario_id": str(user_id) if user_id else None,
@@ -53,7 +90,8 @@ class CompraModel:
                         "longitud_destino": lon_d,
                         "metodo_entrega": doc.get("metodo_entrega") if doc.get("metodo_entrega") is not None else "ENTREGA",
                         "usuario_email": user_doc.get("email") if user_doc else None,
-                        "usuario_nombres": user_doc.get("nombres") if user_doc else None
+                        "usuario_nombres": user_doc.get("nombres") if user_doc else None,
+                        "detalles": detalles_list
                     })
                 return result
             except Exception as mongo_err:
@@ -63,7 +101,40 @@ class CompraModel:
     def obtener_por_usuario(usuario_id):
         # Para la App Móvil (Flutter)
         try:
-            return execute_pg_query("SELECT id, to_char(fecha_compra, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as fecha_compra, subtotal, iva, total, estado, clave_acceso, direccion_origen, direccion_destino, latitud_origen, longitud_origen, latitud_destino, longitud_destino, metodo_entrega FROM compras WHERE usuario_id = %s AND eliminado = FALSE ORDER BY fecha_compra DESC", (usuario_id,), fetch_all=True)
+            compras = execute_pg_query("""
+                SELECT c.id, c.usuario_id, to_char(c.fecha_compra, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as fecha_compra, c.subtotal, c.iva, c.total, c.estado, c.clave_acceso, 
+                       c.direccion_origen, c.direccion_destino, c.latitud_origen, c.longitud_origen, c.latitud_destino, c.longitud_destino, c.metodo_entrega,
+                       u.email as usuario_email, u.nombres as usuario_nombres
+                FROM compras c
+                JOIN usuarios u ON c.usuario_id = u.id
+                WHERE c.usuario_id = %s AND c.eliminado = FALSE
+                ORDER BY c.fecha_compra DESC
+            """, (usuario_id,), fetch_all=True)
+
+            if compras:
+                compra_ids = [c['id'] for c in compras]
+                detalles = execute_pg_query("""
+                    SELECT dc.compra_id, dc.producto_id, dc.cantidad, dc.precio_unitario, dc.subtotal, p.nombre as producto_nombre
+                    FROM detalle_compra dc
+                    JOIN productos p ON dc.producto_id = p.id
+                    WHERE dc.compra_id = ANY(%s)
+                """, (compra_ids,), fetch_all=True)
+
+                from collections import defaultdict
+                detalles_por_compra = defaultdict(list)
+                for d in detalles:
+                    detalles_por_compra[str(d['compra_id'])].append({
+                        "producto_id": str(d['producto_id']),
+                        "producto_nombre": d['producto_nombre'],
+                        "cantidad": d['cantidad'],
+                        "precio_unitario": float(d['precio_unitario']),
+                        "subtotal": float(d['subtotal'])
+                    })
+
+                for c in compras:
+                    c['detalles'] = detalles_por_compra[str(c['id'])]
+
+            return compras
         except Exception as e:
             print(f"Advertencia: Fallaron bases de datos relacionales para obtener_por_usuario ({e}). Intentando fallback en MongoDB...")
             db = get_mongodb_db()
@@ -71,6 +142,7 @@ class CompraModel:
                 raise Exception("Bases de datos PostgreSQL caídas y MongoDB no disponible")
             try:
                 compras_col = db["compras"]
+                usuarios_col = db["usuarios"]
                 
                 import uuid
                 u_str = str(usuario_id)
@@ -88,12 +160,28 @@ class CompraModel:
                 }
                 
                 cursor_mongo = compras_col.find(query).sort("fecha_compra", -1)
+                
+                user_doc = usuarios_col.find_one({"$or": [{"id": u_str}, {"id": u_uuid}] if u_uuid else [{"id": u_str}]})
+                user_email = user_doc.get("email") if user_doc else None
+                user_nombres = user_doc.get("nombres") if user_doc else None
+
                 result = []
                 for doc in cursor_mongo:
                     lat_o = float(doc.get("latitud_origen")) if doc.get("latitud_origen") is not None else None
                     lon_o = float(doc.get("longitud_origen")) if doc.get("longitud_origen") is not None else None
                     lat_d = float(doc.get("latitud_destino")) if doc.get("latitud_destino") is not None else None
                     lon_d = float(doc.get("longitud_destino")) if doc.get("longitud_destino") is not None else None
+
+                    detalles_raw = doc.get("detalles") or doc.get("details") or []
+                    detalles_list = []
+                    for item in detalles_raw:
+                        detalles_list.append({
+                            "producto_id": str(item.get("producto_id")),
+                            "producto_nombre": item.get("producto_nombre") or item.get("nombre") or "",
+                            "cantidad": item.get("cantidad") or 0,
+                            "precio_unitario": float(item.get("precio_unitario") or 0.0),
+                            "subtotal": float(item.get("subtotal") or 0.0)
+                        })
 
                     result.append({
                         "id": str(doc.get("id")),
@@ -109,7 +197,10 @@ class CompraModel:
                         "longitud_origen": lon_o,
                         "latitud_destino": lat_d,
                         "longitud_destino": lon_d,
-                        "metodo_entrega": doc.get("metodo_entrega") if doc.get("metodo_entrega") is not None else "ENTREGA"
+                        "metodo_entrega": doc.get("metodo_entrega") if doc.get("metodo_entrega") is not None else "ENTREGA",
+                        "usuario_email": user_email,
+                        "usuario_nombres": user_nombres,
+                        "detalles": detalles_list
                     })
                 return result
             except Exception as mongo_err:
