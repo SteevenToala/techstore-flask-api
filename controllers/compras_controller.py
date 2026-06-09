@@ -129,3 +129,15 @@ def eliminar_compra(id):
         return jsonify({"success": False, "message": "Compra no encontrada"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": "Error al eliminar compra", "error": str(e)}), 500
+
+def facturar_compra(id):
+    """Endpoint para actualizar una compra al estado FACTURADA con su XML"""
+    data = request.get_json()
+    factura_xml = data.get('factura_xml', '')
+    clave_acceso = data.get('clave_acceso', '')
+
+    try:
+        CompraModel.actualizar_factura(id, clave_acceso, factura_xml)
+        return jsonify({"success": True, "message": "Compra actualizada a FACTURADA"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error al facturar compra", "error": str(e)}), 500

@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from controllers.compras_controller import obtener_compras, crear_compra, eliminar_compra
+from controllers.compras_controller import obtener_compras, crear_compra, eliminar_compra, facturar_compra
 from utils.auth import require_auth
 
 compras_bp = Blueprint('compras', __name__)
@@ -19,3 +19,8 @@ def post_compra():
 @require_auth
 def delete_compra(id):
     return eliminar_compra(id)
+
+@compras_bp.route('/<string:id>/facturar', methods=['PUT'])
+@require_auth
+def put_facturar_compra(id):
+    return facturar_compra(id)
