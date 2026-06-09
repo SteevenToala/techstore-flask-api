@@ -234,33 +234,44 @@ class CompraModel:
                 compra_id = cursor.fetchone()['id']
 
 
+                # 1. Agrupar cantidades de productos duplicados en la misma solicitud
+                from collections import defaultdict
+                detalles_agrupados = defaultdict(lambda: {'cantidad': 0, 'precio_unitario': 0.0})
                 for d in detalles:
+                    p_id = str(d['producto_id'])
+                    detalles_agrupados[p_id]['cantidad'] += d['cantidad']
+                    detalles_agrupados[p_id]['precio_unitario'] = float(d['precio_unitario'])
+
+                # 2. Ordenar detalles por ID de producto (Previene Deadlocks por bloqueo cruzado)
+                detalles_ordenados = sorted(detalles_agrupados.items(), key=lambda x: x[0])
+
+                for prod_id, info in detalles_ordenados:
                     cursor.execute("""
                         SELECT stock, nombre, activo, eliminado 
                         FROM productos 
                         WHERE id = %s 
                         FOR UPDATE;
-                    """, (d['producto_id'],))
+                    """, (prod_id,))
                     producto = cursor.fetchone()
                     
                     if not producto:
                         raise Exception("Producto no encontrado o no existe")
                     if producto['eliminado'] or not producto['activo']:
                         raise Exception(f"El producto '{producto['nombre']}' ya no está disponible")
-                    if producto['stock'] < d['cantidad']:
-                        raise Exception(f"Stock insuficiente para '{producto['nombre']}'. Disponible: {producto['stock']}, Solicitado: {d['cantidad']}")
+                    if producto['stock'] < info['cantidad']:
+                        raise Exception(f"Stock insuficiente para '{producto['nombre']}'. Disponible: {producto['stock']}, Solicitado: {info['cantidad']}")
 
                     cursor.execute("""
                         UPDATE productos 
                         SET stock = stock - %s, updated_at = NOW() 
                         WHERE id = %s;
-                    """, (d['cantidad'], d['producto_id']))
+                    """, (info['cantidad'], prod_id))
 
-                    subtotal_detalle = d['cantidad'] * d['precio_unitario']
+                    subtotal_detalle = info['cantidad'] * info['precio_unitario']
                     cursor.execute("""
                         INSERT INTO detalle_compra (compra_id, producto_id, cantidad, precio_unitario, subtotal)
                         VALUES (%s, %s, %s, %s, %s)
-                    """, (compra_id, d['producto_id'], d['cantidad'], d['precio_unitario'], subtotal_detalle))
+                    """, (compra_id, prod_id, info['cantidad'], info['precio_unitario'], subtotal_detalle))
                 
                 conn.commit()
                 return compra_id
