@@ -31,17 +31,22 @@ def crear_usuario():
 
 def actualizar_usuario(id):
     data = request.get_json()
-    nombres = data.get('nombres')
-    apellidos = data.get('apellidos')
-    rol = data.get('rol')
-    telefono = data.get('telefono')
-    cedula = data.get('cedula')
-    if not cedula:
-        cedula = None
-    estado = data.get('estado')
+    if not data:
+        return jsonify({"success": False, "message": "No se proporcionaron datos para actualizar"}), 400
+
+    campos_a_actualizar = {}
+    for campo in ['nombres', 'apellidos', 'rol', 'telefono', 'cedula', 'estado']:
+        if campo in data:
+            val = data[campo]
+            if campo == 'cedula' and not val:
+                val = None
+            campos_a_actualizar[campo] = val
+
+    if not campos_a_actualizar:
+        return jsonify({"success": False, "message": "No se proporcionaron campos válidos para actualizar"}), 400
 
     try:
-        actualizado = UsuarioModel.actualizar(id, nombres, apellidos, rol, telefono, cedula, estado)
+        actualizado = UsuarioModel.actualizar(id, campos_a_actualizar)
         if actualizado:
             return jsonify({"success": True, "message": "Usuario actualizado exitosamente"}), 200
         return jsonify({"success": False, "message": "Usuario no encontrado"}), 404

@@ -80,18 +80,27 @@ class ProductoModel:
             conn.close()
 
     @staticmethod
-    def actualizar(id, nombre, descripcion, precio, stock, imagen_url, activo):
+    def actualizar(id, campos):
         conn = get_db_connection()
         if not conn:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("""
+                set_clauses = []
+                values = []
+                for campo, valor in campos.items():
+                    set_clauses.append(f"{campo} = %s")
+                    values.append(valor)
+                
+                set_clauses.append("updated_at = NOW()")
+                query = f"""
                     UPDATE productos
-                    SET nombre = %s, descripcion = %s, precio = %s, stock = %s, imagen_url = %s, activo = %s, updated_at = NOW()
+                    SET {', '.join(set_clauses)}
                     WHERE id = %s
                     RETURNING id;
-                """, (nombre, descripcion, precio, stock, imagen_url, activo, id))
+                """
+                values.append(id)
+                cursor.execute(query, tuple(values))
                 actualizado = cursor.fetchone()
                 conn.commit()
                 return actualizado

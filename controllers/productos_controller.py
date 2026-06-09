@@ -30,15 +30,19 @@ def crear_producto():
 
 def actualizar_producto(id):
     data = request.get_json()
-    nombre = data.get('nombre')
-    descripcion = data.get('descripcion')
-    precio = data.get('precio')
-    stock = data.get('stock')
-    imagen_url = data.get('imagen_url')
-    activo = data.get('activo')
+    if not data:
+        return jsonify({"success": False, "message": "No se proporcionaron datos para actualizar"}), 400
+
+    campos_a_actualizar = {}
+    for campo in ['nombre', 'descripcion', 'precio', 'stock', 'imagen_url', 'activo']:
+        if campo in data:
+            campos_a_actualizar[campo] = data[campo]
+
+    if not campos_a_actualizar:
+        return jsonify({"success": False, "message": "No se proporcionaron campos válidos para actualizar"}), 400
 
     try:
-        actualizado = ProductoModel.actualizar(id, nombre, descripcion, precio, stock, imagen_url, activo)
+        actualizado = ProductoModel.actualizar(id, campos_a_actualizar)
         if actualizado:
             return jsonify({"success": True, "message": "Producto actualizado exitosamente"}), 200
         return jsonify({"success": False, "message": "Producto no encontrado"}), 404

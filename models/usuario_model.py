@@ -82,18 +82,27 @@ class UsuarioModel:
             conn.close()
 
     @staticmethod
-    def actualizar(id, nombres, apellidos, rol, telefono, cedula, estado):
+    def actualizar(id, campos):
         conn = get_db_connection()
         if not conn:
             raise Exception("Error de conexión a la BD")
         try:
             with conn.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE usuarios 
-                    SET nombres = %s, apellidos = %s, rol = %s, telefono = %s, cedula = %s, estado = %s, updated_at = NOW()
+                set_clauses = []
+                values = []
+                for campo, valor in campos.items():
+                    set_clauses.append(f"{campo} = %s")
+                    values.append(valor)
+                
+                set_clauses.append("updated_at = NOW()")
+                query = f"""
+                    UPDATE usuarios
+                    SET {', '.join(set_clauses)}
                     WHERE id = %s
                     RETURNING id;
-                """, (nombres, apellidos, rol, telefono, cedula, estado, id))
+                """
+                values.append(id)
+                cursor.execute(query, tuple(values))
                 actualizado = cursor.fetchone()
                 conn.commit()
                 return actualizado
